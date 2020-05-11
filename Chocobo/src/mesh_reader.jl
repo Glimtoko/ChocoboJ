@@ -185,7 +185,7 @@ function read_mesh!(
         4 => ((1, 2), (4, 3))
     )
 
-    @time @inbounds for cell in 1:ncells
+    @inbounds for cell in 1:ncells
         @views n1 = nodelist.d[:, cell]
         @inbounds for cell2 in 1:ncells
             @views n2 = nodelist.d[:, cell2]

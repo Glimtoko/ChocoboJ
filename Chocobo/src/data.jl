@@ -3,6 +3,7 @@
 # be mutable.
 
 using Parameters
+using SharedArrays
 
 abstract type Quant{T<:Number} end
 
@@ -11,7 +12,7 @@ struct NodeQuant{T} <: Quant{T}
     n::Int32
     n1::Int32
     n2::Int32
-    d::Array{T}
+    d::SharedArray{T}
     NodeQuant{T}(n) where {T<:Number} = new(1, n, n, n, zeros(n))
     NodeQuant{T}(n1, n2) where {T<:Number} = new(2, n1*n2, n1, n2, zeros((n1, n2)))
 end
@@ -21,7 +22,7 @@ struct CellQuant{T} <: Quant{T}
     n::Int32
     n1::Int32
     n2::Int32
-    d::Array{T}
+    d::SharedArray{T}
     CellQuant{T}(n) where {T<:Number} = new(1, n, n, 1, zeros(n))
     CellQuant{T}(n1, n2) where {T<:Number} = new(2, n1*n2, n1, n2, zeros((n1, n2)))
 end
@@ -44,8 +45,13 @@ Base.iterate(Q::Quant, state=1) = state > Q.n ? nothing : (Q.d[state], state+1)
 Base.keys(Q::Quant) = Base.LinearIndices(Q.d)
 Base.length(Q::Quant) = Q.n
 Base.size(Q::Quant) = (Q.n1, Q.n2)
+Base.size(Q::Quant, I::Integer) = ([Q.n1, Q.n2][I])
 
 @with_kw struct Mesh{NCells, NNodes}
+    # Mesh dimensions
+    ncells = NCells
+    nnodes = NNodes
+
     # Nodal coordinates, velocities and node type
     x = NodeQuant{Float64}(NNodes)
     y = NodeQuant{Float64}(NNodes)
@@ -77,7 +83,7 @@ Base.size(Q::Quant) = (Q.n1, Q.n2)
     ∫∂N∂y = CellQuant{Float64}(4, NCells)
     ∂N∂x = CellQuant{Float64}(4, NCells)
     ∂N∂y = CellQuant{Float64}(4, NCells)
-    element_weight = CellQuant{Float64}(4, NCells)
+    element_weightc = CellQuant{Float64}(4, NCells)
 
     ▽●v = CellQuant{Float64}(NCells)
     ∫▽●V = CellQuant{Float64}(NCells)
