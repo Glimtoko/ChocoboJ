@@ -1,3 +1,5 @@
+const TINY = 1.0e-10  # Used to avoid zeros in divisions
+
 function get_finite_elements_OLD!(
     x::NodeQuant, y::NodeQuant, nodelist::CellQuant,
     ∫N::CellQuant, ∫∂N∂x::CellQuant, ∫∂N∂y::CellQuant,
@@ -80,20 +82,21 @@ function get_q_OLD!(
     u::NodeQuant, v::NodeQuant,
     area::CellQuant, nodelist::CellQuant, elelconn::CellQuant,
     boundary::NodeQuant,
-    q::CellQuant
+    q::CellQuant,
+    input::Input
 )
     ncells = size(ρ, 1)
 
-    if qform == 1
+    if input.qform == 1
         @inbounds for i in 1:ncells
             if ▽●v[i] < 0.0
                 ∂u∂x = sqrt(area[i])*▽●v[i]
-                q[i] = CQ*ρ[i]*∂u∂x^2 + CL*ρ[i]*soundspeed[i]*abs(∂u∂x)
+                q[i] = input.CQ*ρ[i]*∂u∂x^2 + input.CL*ρ[i]*soundspeed[i]*abs(∂u∂x)
             else
                 q[i] = 0.0
             end
         end
-    elseif qform == 2
+    elseif input.qform == 2
         ΔuΔx_b = zeros(Float64, ncells)
         ΔuΔx_t = zeros(Float64, ncells)
         ΔuΔx_r = zeros(Float64, ncells)
@@ -102,7 +105,7 @@ function get_q_OLD!(
         Δxlr = zeros(Float64, ncells)
 
         @inbounds for i in 1:ncells
-            @views n = nodelist[:, i]
+            @views n = nodelist.d[:, i]
 
             # Calculate leg lengths
             Lhor_y = -(x[n[4]] + x[n[3]] - x[n[2]] - x[n[1]])
@@ -130,8 +133,8 @@ function get_q_OLD!(
         Φl = zeros(Float64, ncells)
 
         @inbounds for i in 1:ncells
-            @views n = nodelist[:, i]
-            @views e = elelconn[:, i]
+            @views n = nodelist.d[:, i]
+            @views e = elelconn.d[:, i]
 
             rlb = 0.0        # edge=bottom ratio=left
             rrb = 0.0        # edge=bottom ratio=right
@@ -204,17 +207,17 @@ function get_q_OLD!(
                 ΔuΔx_t[i] >= -TINY && (ΔuΔx_t[i] = 0.0)
                 ΔuΔx_b[i] >= -TINY && (ΔuΔx_b[i] = 0.0)
 
-                qb = CQ*ρ[i]*(ΔuΔx_b[i]*Δxtb[i])^2*(1.0 - Φb[i]^2) +
-                     CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_b[i]*Δxtb[i])*(1.0 - Φb[i])
+                qb = input.CQ*ρ[i]*(ΔuΔx_b[i]*Δxtb[i])^2*(1.0 - Φb[i]^2) +
+                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_b[i]*Δxtb[i])*(1.0 - Φb[i])
 
-                qt = CQ*ρ[i]*(ΔuΔx_t[i]*Δxtb[i])^2*(1.0 - Φt[i]^2) +
-                     CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_t[i]*Δxtb[i])*(1.0 - Φt[i])
+                qt = input.CQ*ρ[i]*(ΔuΔx_t[i]*Δxtb[i])^2*(1.0 - Φt[i]^2) +
+                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_t[i]*Δxtb[i])*(1.0 - Φt[i])
 
-                ql = CQ*ρ[i]*(ΔuΔx_l[i]*Δxlr[i])^2*(1.0 - Φl[i]^2) +
-                     CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_l[i]*Δxlr[i])*(1.0 - Φl[i])
+                ql = input.CQ*ρ[i]*(ΔuΔx_l[i]*Δxlr[i])^2*(1.0 - Φl[i]^2) +
+                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_l[i]*Δxlr[i])*(1.0 - Φl[i])
 
-                qr = CQ*ρ[i]*(ΔuΔx_r[i]*Δxlr[i])^2*(1.0 - Φr[i]^2) +
-                     CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_r[i]*Δxlr[i])*(1.0 - Φr[i])
+                qr = input.CQ*ρ[i]*(ΔuΔx_r[i]*Δxlr[i])^2*(1.0 - Φr[i]^2) +
+                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_r[i]*Δxlr[i])*(1.0 - Φr[i])
 
                 q[i] = 0.5(qb + qt + qr + ql)
             else
@@ -222,4 +225,58 @@ function get_q_OLD!(
             end
         end
     end
+end
+
+function get_dt_OLD(
+    area::CellQuant, soundspeed::CellQuant, ρ::CellQuant,
+    q::CellQuant, dtold::Float64, time::Float64,
+    input::Input
+)
+    ncells = size(area, 1)
+
+    δt::Float64 = 0.0
+
+    dtmin::Float64 = 1.0
+    dt::Float64 = 0.0
+    control::Int32 = 0
+
+    # WARNING: This cannot be a distributed loop
+    @inbounds for i in 1:ncells
+        if area[i] <= 0.0
+            println("Negative area in cell $i. Area = $(area[i])")
+            δt = 9999.9
+        else
+            δt = sqrt(area[i]/max(input.ρcutoff, soundspeed[i]^2 + 2q[i]/ρ[i]))/2.0
+        end
+        if δt < dtmin
+            dtmin = δt
+            control = i
+        end
+    end
+
+    if time <= input.t0
+        dt = min(dtmin, input.dtmax, input.dtinit)
+    else
+        dt = min(dtmin, input.dtmax, dtold*input.growth)
+        if dt == dtold*input.growth
+            control = -1
+        end
+    end
+
+    return dt, control
+end
+
+function move_nodes_OLD!(
+    dt::Float64, x::NodeQuant, y::NodeQuant,
+    u::NodeQuant, v::NodeQuant,
+    xnew::NodeQuant, ynew::NodeQuant
+)
+
+    nnodes = size(x, 1)
+
+    @inbounds for i in 1:nnodes
+        xnew[i] = x[i] + dt*u[i]
+        ynew[i] = y[i] + dt*v[i]
+    end
+
 end

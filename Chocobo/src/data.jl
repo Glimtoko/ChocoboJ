@@ -47,7 +47,13 @@ Base.length(Q::Quant) = Q.n
 Base.size(Q::Quant) = (Q.n1, Q.n2)
 Base.size(Q::Quant, I::Integer) = ([Q.n1, Q.n2][I])
 
-@with_kw struct Mesh{NCells, NNodes}
+function copyquant!(q1::Quant, q2::Quant)
+    @inbounds @sync @distributed for i in 1:q1.n
+        q2[i] = q1[i]
+    end
+end
+
+@with_kw mutable struct Mesh{NCells, NNodes}
     # Mesh dimensions
     ncells = NCells
     nnodes = NNodes
@@ -97,4 +103,21 @@ Base.size(Q::Quant, I::Integer) = ([Q.n1, Q.n2][I])
     regioncelliterator = Dict()
     elelconn = CellQuant{Int32}(4, NCells)
     nodnodconn = NodeQuant{Int32}(4, NNodes)
+
+    # Stored (old) data
+    volume_store = CellQuant{Float64}(NCells)
+    u_store = NodeQuant{Float64}(NNodes)
+    v_store = NodeQuant{Float64}(NNodes)
+
+    # Averaged velocities
+    ubar = NodeQuant{Float64}(NNodes)
+    vbar = NodeQuant{Float64}(NNodes)
+
+    # Work arrays
+    mass_scatter_to_nodes = NodeQuant{Float64}(NNodes)
+    force_scatter_to_nodes_x = NodeQuant{Float64}(NNodes)
+    force_scatter_to_nodes_y = NodeQuant{Float64}(NNodes)
+
+    # Materials
+    gamma = []
 end

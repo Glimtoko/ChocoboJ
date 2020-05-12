@@ -27,7 +27,7 @@ end
     CQ = 0.75
 
     # Robustness
-    anti_hg = [ANTI_HG_BF, ANTI_HG_BF]
+    anti_hg = [ANTI_HG_NONE, ANTI_HG_NONE]
     κ = 0.7
 
     # Mesh Extents
