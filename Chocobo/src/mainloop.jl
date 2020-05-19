@@ -161,10 +161,9 @@ function mainloop(mesh::Mesh, problem::String, input::Input)
                 lastsilo = lastsilo + input.dtsilo
                 output_silo(mesh, step, time, "$problem/results/visdump")
             end
-
-            if step == input.debug_step_count
-                break
-            end
+        end
+        if step == input.debug_step_count
+            break
         end
 
         step += 1

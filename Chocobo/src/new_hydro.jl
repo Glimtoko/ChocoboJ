@@ -99,7 +99,7 @@ function get_q!(
         @inbounds for i in 1:ncells
             if ▽●v[i] < 0.0
                 ∂u∂x = sqrt(area[i])*▽●v[i]
-                q[i] = input.CQ*ρ[i]*∂u∂x^2 + input.CL*ρ[i]*soundspeed[i]*abs(∂u∂x)
+                q[i] = input.cq*ρ[i]*∂u∂x^2 + input.cl*ρ[i]*soundspeed[i]*abs(∂u∂x)
             else
                 q[i] = 0.0
             end
@@ -215,17 +215,17 @@ function get_q!(
                 ΔuΔx_t[i] >= -TINY && (ΔuΔx_t[i] = 0.0)
                 ΔuΔx_b[i] >= -TINY && (ΔuΔx_b[i] = 0.0)
 
-                qb = input.CQ*ρ[i]*(ΔuΔx_b[i]*Δxtb[i])^2*(1.0 - Φb[i]^2) +
-                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_b[i]*Δxtb[i])*(1.0 - Φb[i])
+                qb = input.cq*ρ[i]*(ΔuΔx_b[i]*Δxtb[i])^2*(1.0 - Φb[i]^2) +
+                     input.cl*ρ[i]*soundspeed[i]*abs(ΔuΔx_b[i]*Δxtb[i])*(1.0 - Φb[i])
 
-                qt = input.CQ*ρ[i]*(ΔuΔx_t[i]*Δxtb[i])^2*(1.0 - Φt[i]^2) +
-                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_t[i]*Δxtb[i])*(1.0 - Φt[i])
+                qt = input.cq*ρ[i]*(ΔuΔx_t[i]*Δxtb[i])^2*(1.0 - Φt[i]^2) +
+                     input.cl*ρ[i]*soundspeed[i]*abs(ΔuΔx_t[i]*Δxtb[i])*(1.0 - Φt[i])
 
-                ql = input.CQ*ρ[i]*(ΔuΔx_l[i]*Δxlr[i])^2*(1.0 - Φl[i]^2) +
-                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_l[i]*Δxlr[i])*(1.0 - Φl[i])
+                ql = input.cq*ρ[i]*(ΔuΔx_l[i]*Δxlr[i])^2*(1.0 - Φl[i]^2) +
+                     input.cl*ρ[i]*soundspeed[i]*abs(ΔuΔx_l[i]*Δxlr[i])*(1.0 - Φl[i])
 
-                qr = input.CQ*ρ[i]*(ΔuΔx_r[i]*Δxlr[i])^2*(1.0 - Φr[i]^2) +
-                     input.CL*ρ[i]*soundspeed[i]*abs(ΔuΔx_r[i]*Δxlr[i])*(1.0 - Φr[i])
+                qr = input.cq*ρ[i]*(ΔuΔx_r[i]*Δxlr[i])^2*(1.0 - Φr[i]^2) +
+                     input.cl*ρ[i]*soundspeed[i]*abs(ΔuΔx_r[i]*Δxlr[i])*(1.0 - Φr[i])
 
                 q[i] = 0.5(qb + qt + qr + ql)
             else
@@ -270,6 +270,7 @@ function get_dt(
     dtmin::Float64 = 1.0
     dt::Float64 = 0.0
     control::Int32 = 0
+    ρcutoff::Float64 = 1.0e-6
 
     # WARNING: This cannot be a distributed loop
     @inbounds for i in 1:ncells
@@ -277,7 +278,7 @@ function get_dt(
             println("Negative area in cell $i. Area = $(area[i])")
             δt = 9999.9
         else
-            δt = sqrt(area[i]/max(input.ρcutoff, soundspeed[i]^2 + 2q[i]/ρ[i]))/2.0
+            δt = sqrt(area[i]/max(ρcutoff, soundspeed[i]^2 + 2q[i]/ρ[i]))/2.0
         end
         if δt < dtmin
             dtmin = δt
