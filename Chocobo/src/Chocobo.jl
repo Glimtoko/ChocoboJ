@@ -28,7 +28,7 @@ settings = ArgParseSettings()
 
     "--mesh", "-m"
         help = "Name of mesh file"
-        default = "sod.key"
+        default = "mesh.key"
 
     "--problem", "-p"
         help = "Problem name - used as directory name where run files will be found"
@@ -51,9 +51,6 @@ nprocs = parsed_args["nprocs"]
 isfile(controlf) || error("Cannot open control file: $controlf")
 isfile(meshf) || error("Cannot open mesh file: $meshf")
 isfile(eosf) || error("Cannot open eos file: $eosf")
-
-# gascodeloc="/home/nick/Programming/git/gascode2/Chocobo/src/"
-# push!(LOAD_PATH, gascodeloc)
 
 if nprocs > 1
     addprocs(nprocs - 1)  # Since we are *adding* processors.
