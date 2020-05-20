@@ -10,6 +10,13 @@ function mainloop(mesh::Mesh, problem::String, input::Input)
     step::Int32 = 1
     output_dumped = false
 
+    # Create output directory
+    try
+        mkdir("$problem/results")
+    catch
+        nothing
+    end
+
     @time while time <= input.tend
         # Get FEM elements
         get_finite_elements!(

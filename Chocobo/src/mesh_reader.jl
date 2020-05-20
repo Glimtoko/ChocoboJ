@@ -48,7 +48,7 @@ end
 
 
 function read_mesh!(
-    filename::String, boundaries::Dict,
+    filename::String,
     nnodes::Integer, ncells::Integer,
     x::NodeQuant, y::NodeQuant,
     nodelist::CellQuant, type::NodeQuant,
@@ -57,6 +57,13 @@ function read_mesh!(
     nodnodconn::NodeQuant,
     material_list::Dict
 )
+    boundaries = Dict(
+    "XLOW" => -1,
+    "XHIGH" => -1,
+    "YLOW" => -2,
+    "YHIGH" => -2,
+)
+
     key = open(filename) do file
         readlines(file)
     end
