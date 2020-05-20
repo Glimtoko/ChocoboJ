@@ -14,7 +14,7 @@ All ChocoboJ dependencies are standard Julia packages which can be installed via
 * SharedArrays
 
 ## Building ChocoboJ
-ChocoboJ is intended to be built into an executable using the PackageCompiler Julia package. Compilation is performed using the `compile.jl` file, but generally the provided makefile should be used. The standard build process. Generally, the following command should be used:
+ChocoboJ is intended to be built into an executable using the PackageCompiler Julia package. Compilation is performed using the `compile.jl` file, but generally the provided makefile should be used. To build and install ChocoboJ, use:
 
     make; make install
 
@@ -63,7 +63,7 @@ or
 These is one important difference between the commands, however: The first command will put output inside a `results` subdirectory in the current directory, whereas the second will place them in a `results` subdirectory of the `sod` directory.
 
 ### Running in Parallel
-It is possible to run ChocoboJ in parallel, via the `Distributed` packages, by using the `--nprocs` (or `-n`) option. This accepts a number of processors to run on, e.g.
+It is possible to run ChocoboJ in parallel, via the `Distributed` package, by using the `--nprocs` (or `-n`) option. This accepts a number of processors to run on, e.g.
 
     chocoboj -n 8
 
